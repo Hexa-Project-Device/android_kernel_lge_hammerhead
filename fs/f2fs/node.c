@@ -1058,6 +1058,7 @@ repeat:
 		goto repeat;
 	}
 got_it:
+	mark_page_accessed(page);
 	return page;
 }
 
@@ -1112,6 +1113,7 @@ page_hit:
 		f2fs_put_page(page, 1);
 		return ERR_PTR(-EIO);
 	}
+	mark_page_accessed(page);
 	return page;
 }
 
@@ -1373,8 +1375,7 @@ static int f2fs_set_node_page_dirty(struct page *page)
 	return 0;
 }
 
-static void f2fs_invalidate_node_page(struct page *page, unsigned int offset,
-				      unsigned int length)
+static void f2fs_invalidate_node_page(struct page *page, unsigned long offset)
 {
 	struct inode *inode = page->mapping->host;
 	if (PageDirty(page))
