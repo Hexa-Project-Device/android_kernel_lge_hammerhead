@@ -7,6 +7,7 @@ rm -rf out
 make -j32 clobber
 make cyanogenmod_hammerhead_defconfig
 mkdir out
+mkdir KDP-Tools
 make -j128
 
 #Build!
