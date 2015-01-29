@@ -40,6 +40,8 @@ source "fs/ocfs2/Kconfig"
 source "fs/btrfs/Kconfig"
 source "fs/nilfs2/Kconfig"
 
+source "fs/sdcardfs/Kconfig"
+
 endif # BLOCK
 
 # Posix ACL utility routines
