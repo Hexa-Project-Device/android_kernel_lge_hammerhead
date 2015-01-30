@@ -24,6 +24,9 @@ bool f2fs_may_inline(struct inode *inode)
 	if (!S_ISREG(inode->i_mode))
 		return false;
 
+	if (i_size_read(inode) > MAX_INLINE_DATA)
+		return false;
+
 	return true;
 }
 
@@ -76,12 +79,11 @@ int f2fs_read_inline_data(struct inode *inode, struct page *page)
 int f2fs_convert_inline_page(struct dnode_of_data *dn, struct page *page)
 {
 	void *src_addr, *dst_addr;
-	block_t new_blk_addr;
 	struct f2fs_io_info fio = {
 		.type = DATA,
 		.rw = WRITE_SYNC | REQ_PRIO,
 	};
-	int err;
+	int dirty, err;
 
 	f2fs_bug_on(F2FS_I_SB(dn->inode), page->index);
 
@@ -103,21 +105,30 @@ int f2fs_convert_inline_page(struct dnode_of_data *dn, struct page *page)
 	src_addr = inline_data_addr(dn->inode_page);
 	dst_addr = kmap_atomic(page);
 	memcpy(dst_addr, src_addr, MAX_INLINE_DATA);
+	flush_dcache_page(page);
 	kunmap_atomic(dst_addr);
 	SetPageUptodate(page);
 no_update:
+	/* clear dirty state */
+	dirty = clear_page_dirty_for_io(page);
+
 	/* write data page to try to make data consistent */
 	set_page_writeback(page);
-
-	write_data_page(page, dn, &new_blk_addr, &fio);
-	update_extent_cache(new_blk_addr, dn);
+	fio.blk_addr = dn->data_blkaddr;
+	write_data_page(page, dn, &fio);
+	update_extent_cache(dn);
 	f2fs_wait_on_page_writeback(page, DATA);
+	if (dirty)
+		inode_dec_dirty_pages(dn->inode);
+
+	/* this converted inline_data should be recovered. */
+	set_inode_flag(F2FS_I(dn->inode), FI_APPEND_WRITE);
 
 	/* clear inline data and flag after data writeback */
 	truncate_inline_data(dn->inode_page, 0);
 clear_out:
-	f2fs_clear_inline_inode(dn->inode);
 	stat_dec_inline_inode(dn->inode);
+	f2fs_clear_inline_inode(dn->inode);
 	sync_inode_page(dn);
 	f2fs_put_dnode(dn);
 	return 0;
@@ -138,8 +149,8 @@ int f2fs_convert_inline_inode(struct inode *inode)
 
 	ipage = get_node_page(sbi, inode->i_ino);
 	if (IS_ERR(ipage)) {
-		f2fs_unlock_op(sbi);
-		return PTR_ERR(ipage);
+		err = PTR_ERR(ipage);
+		goto out;
 	}
 
 	set_new_dnode(&dn, inode, ipage, ipage, 0);
@@ -148,7 +159,7 @@ int f2fs_convert_inline_inode(struct inode *inode)
 		err = f2fs_convert_inline_page(&dn, page);
 
 	f2fs_put_dnode(&dn);
-
+out:
 	f2fs_unlock_op(sbi);
 
 	f2fs_put_page(page, 1);
