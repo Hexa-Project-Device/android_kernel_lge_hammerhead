@@ -48,6 +48,10 @@
 int graphics_boost = 6;
 #endif
 
+#ifdef CONFIG_CPU_FREQ_GOV_ELECTROACTIVE
+int graphics_boost = 6;
+#endif
+
 struct clk_pair {
 	const char *name;
 	uint map;
@@ -195,6 +199,10 @@ void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 
 #ifdef CONFIG_CPU_FREQ_GOV_SLIM
 	graphics_boost = pwr->active_pwrlevel;
+#endif
+
+#ifdef CONFIG_CPU_FREQ_GOV_ELECTROACTIVE
+        graphics_boost = pwr->active_pwrlevel;
 #endif
 }
 
