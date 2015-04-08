@@ -33,6 +33,8 @@ obj-$(CONFIG_CPU_FREQ_GOV_BADASS)       += cpufreq_badass.o
 obj-$(CONFIG_CPU_FREQ_GOV_ADAPTIVE)	+= cpufreq_adaptive.o
 obj-$(CONFIG_CPU_FREQ_GOV_ABYSSPLUGV2)	+= cpufreq_abyssplugv2.o
 obj-$(CONFIG_CPU_FREQ_GOV_ABYSSPLUG)	+= cpufreq_abyssplug.o
+obj-$(CONFIG_CPU_FREQ_GOV_ELECTROACTIVE)+= cpufreq_electroactive.o
+obj-$(CONFIG_CPU_FREQ_GOV_ELECTRODEMAND)+= cpufreq_electrodemand.o
 
 
 
