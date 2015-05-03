@@ -262,7 +262,7 @@ static void adreno_input_work(struct work_struct *work)
 	 * Schedule adreno_start in a high priority workqueue.
 	 */
 	kgsl_pwrctrl_wake(device, 1);
-
+	
 	/*
 	 * When waking up from a touch event we want to stay active long enough
 	 * for the user to send a draw command.  The default idle timer timeout
@@ -1967,7 +1967,6 @@ static void adreno_vbif_clear_pending_transactions(struct kgsl_device *device)
 	}
 	adreno_writereg(adreno_dev, ADRENO_REG_VBIF_XIN_HALT_CTRL0, 0);
 }
-
 
 static int _status;
 
