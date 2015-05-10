@@ -435,7 +435,7 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 		rc = wait_for_completion_timeout(
 				&ctx->pp_comp, KOFF_TIMEOUT);
 
-		if (rc <= 0) {
+		if (rc < 0) {
 			WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
 						rc, ctl->num);
 			rc = -EPERM;
