@@ -274,6 +274,8 @@ core-y				+= arch/arm/perfmon/
 
 libs-y				:= arch/arm/lib/ $(libs-y)
 
+core-$(CONFIG_INTELLI_PLUG)	+= arch/arm/hotplug/
+
 # Default target when executing plain make
 ifeq ($(CONFIG_XIP_KERNEL),y)
 KBUILD_IMAGE := xipImage
