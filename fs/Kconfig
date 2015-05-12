@@ -224,10 +224,10 @@ source "fs/pstore/Kconfig"
 source "fs/sysv/Kconfig"
 source "fs/ufs/Kconfig"
 source "fs/exofs/Kconfig"
-source "fs/f2fs/Kconfig"
 
 endif # MISC_FILESYSTEMS
 
+source "fs/f2fs/Kconfig"
 source "fs/exofs/Kconfig.ore"
 
 menuconfig NETWORK_FILESYSTEMS
