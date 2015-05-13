@@ -662,7 +662,7 @@ static struct socket *drbd_wait_for_connect(struct drbd_conf *mdev)
 	}
 
 	timeo = mdev->net_conf->try_connect_int * HZ;
-	timeo += (random32() & 1) ? timeo / 7 : -timeo / 7; /* 28.5% random jitter */
+	timeo += (prandom_u32() & 1) ? timeo / 7 : -timeo / 7; /* 28.5% random jitter */
 
 	s_listen->sk->sk_reuse    = 1; /* SO_REUSEADDR */
 	s_listen->sk->sk_rcvtimeo = timeo;
@@ -819,7 +819,7 @@ retry:
 			default:
 				dev_warn(DEV, "Error receiving initial packet\n");
 				sock_release(s);
-				if (random32() & 1)
+				if (prandom_u32() & 1)
 					goto retry;
 			}
 		}
@@ -2225,7 +2225,6 @@ static int drbd_asb_recover_1p(struct drbd_conf *mdev) __must_hold(local)
 		if (hg == -1 && mdev->state.role == R_PRIMARY) {
 			enum drbd_state_rv rv2;
 
-			drbd_set_role(mdev, R_SECONDARY, 0);
 			 /* drbd_change_state() does not sleep while in SS_IN_TRANSIENT_STATE,
 			  * we might be here in C_WF_REPORT_PARAMS which is transient.
 			  * we do not need to wait for the after state change work either. */

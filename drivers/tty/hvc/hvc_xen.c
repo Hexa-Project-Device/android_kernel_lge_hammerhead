@@ -216,22 +216,17 @@ static int xen_hvm_console_init(void)
 		return 0;
 
 	r = hvm_get_parameter(HVM_PARAM_CONSOLE_EVTCHN, &v);
-	if (r < 0) {
-		kfree(info);
-		return -ENODEV;
-	}
+	if (r < 0)
+		goto err;
 	info->evtchn = v;
-	hvm_get_parameter(HVM_PARAM_CONSOLE_PFN, &v);
-	if (r < 0) {
-		kfree(info);
-		return -ENODEV;
-	}
+	v = 0;
+	r = hvm_get_parameter(HVM_PARAM_CONSOLE_PFN, &v);
+	if (r < 0)
+		goto err;
 	mfn = v;
 	info->intf = ioremap(mfn << PAGE_SHIFT, PAGE_SIZE);
-	if (info->intf == NULL) {
-		kfree(info);
-		return -ENODEV;
-	}
+	if (info->intf == NULL)
+		goto err;
 	info->vtermno = HVC_COOKIE;
 
 	spin_lock(&xencons_lock);
@@ -239,6 +234,9 @@ static int xen_hvm_console_init(void)
 	spin_unlock(&xencons_lock);
 
 	return 0;
+err:
+	kfree(info);
+	return -ENODEV;
 }
 
 static int xen_pv_console_init(void)
@@ -430,9 +428,9 @@ static int __devinit xencons_probe(struct xenbus_device *dev,
 	if (devid == 0)
 		return -ENODEV;
 
-	info = kzalloc(sizeof(struct xencons_info), GFP_KERNEL | __GFP_ZERO);
+	info = kzalloc(sizeof(struct xencons_info), GFP_KERNEL);
 	if (!info)
-		goto error_nomem;
+		return -ENOMEM;
 	dev_set_drvdata(&dev->dev, info);
 	info->xbdev = dev;
 	info->vtermno = xenbus_devid_to_vtermno(devid);

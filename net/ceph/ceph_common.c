@@ -305,7 +305,6 @@ ceph_parse_options(char *options, const char *dev_name,
 
 	/* start with defaults */
 	opt->flags = CEPH_OPT_DEFAULT;
-	opt->osd_timeout = CEPH_OSD_TIMEOUT_DEFAULT;
 	opt->osd_keepalive_timeout = CEPH_OSD_KEEPALIVE_DEFAULT;
 	opt->mount_timeout = CEPH_MOUNT_TIMEOUT_DEFAULT; /* seconds */
 	opt->osd_idle_ttl = CEPH_OSD_IDLE_TTL_DEFAULT;   /* seconds */
@@ -391,7 +390,7 @@ ceph_parse_options(char *options, const char *dev_name,
 
 			/* misc */
 		case Opt_osdtimeout:
-			opt->osd_timeout = intval;
+			pr_warning("ignoring deprecated osdtimeout option\n");
 			break;
 		case Opt_osdkeepalivetimeout:
 			opt->osd_keepalive_timeout = intval;
@@ -501,15 +500,10 @@ void ceph_destroy_client(struct ceph_client *client)
 {
 	dout("destroy_client %p\n", client);
 
+	atomic_set(&client->msgr.stopping, 1);
+
 	/* unmount */
 	ceph_osdc_stop(&client->osdc);
-
-	/*
-	 * make sure osd connections close out before destroying the
-	 * auth module, which is needed to free those connections'
-	 * ceph_authorizers.
-	 */
-	ceph_msgr_flush();
 
 	ceph_monc_stop(&client->monc);
 

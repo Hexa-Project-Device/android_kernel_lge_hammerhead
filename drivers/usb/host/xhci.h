@@ -206,8 +206,8 @@ struct xhci_op_regs {
 /* bits 12:31 are reserved (and should be preserved on writes). */
 
 /* IMAN - Interrupt Management Register */
-#define IMAN_IP		(1 << 1)
-#define IMAN_IE		(1 << 0)
+#define IMAN_IE		(1 << 1)
+#define IMAN_IP		(1 << 0)
 
 /* USBSTS - USB status - status bitmasks */
 /* HC not running - set to 1 when run/stop bit is cleared. */
@@ -341,7 +341,11 @@ struct xhci_op_regs {
 #define PORT_PLC	(1 << 22)
 /* port configure error change - port failed to configure its link partner */
 #define PORT_CEC	(1 << 23)
-/* bit 24 reserved */
+/* Cold Attach Status - xHC can set this bit to report device attached during
+ * Sx state. Warm port reset should be perfomed to clear this bit and move port
+ * to connected state.
+ */
+#define PORT_CAS	(1 << 24)
 /* wake on connect (enable) */
 #define PORT_WKCONN_E	(1 << 25)
 /* wake on disconnect (enable) */
@@ -1365,6 +1369,8 @@ struct xhci_bus_state {
 	u32			suspended_ports;
 	u32			port_remote_wakeup;
 	unsigned long		resume_done[USB_MAXCHILDREN];
+	/* which ports have started to resume */
+	unsigned long		resuming_ports;
 };
 
 static inline unsigned int hcd_index(struct usb_hcd *hcd)
@@ -1505,6 +1511,8 @@ struct xhci_hcd {
  * The workaround is to give worst case pipe delay ~350us after resetting HC
  */
 #define XHCI_RESET_DELAY	(1 << 11)
+#define XHCI_SLOW_SUSPEND	(1 << 12)
+#define XHCI_SPURIOUS_WAKEUP	(1 << 13)
 	unsigned int		num_active_eps;
 	unsigned int		limit_active_eps;
 	/* There are two roothubs to keep track of bus suspend info for */
@@ -1721,7 +1729,7 @@ void xhci_shutdown(struct usb_hcd *hcd);
 int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks);
 
 #ifdef	CONFIG_PM
-int xhci_suspend(struct xhci_hcd *xhci);
+int xhci_suspend(struct xhci_hcd *xhci, bool do_wakeup);
 int xhci_resume(struct xhci_hcd *xhci, bool hibernated);
 #else
 #define	xhci_suspend	NULL

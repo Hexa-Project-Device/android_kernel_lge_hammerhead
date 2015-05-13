@@ -1,6 +1,7 @@
-VERSION = 3
+
+ VERSION = 3
 PATCHLEVEL = 4
-SUBLEVEL = 0
+SUBLEVEL = 107
 EXTRAVERSION =
 NAME = Saber-toothed Squirrel
 
@@ -21,6 +22,9 @@ unexport LC_ALL
 LC_COLLATE=C
 LC_NUMERIC=C
 export LC_COLLATE LC_NUMERIC
+
+# Avoid interference with shell env settings
+unexport GREP_OPTIONS
 
 # We are using a recursive build, so we need to do a little thinking
 # to get the ordering right.
@@ -577,6 +581,9 @@ endif
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
 
+# Tell gcc to never replace conditional load with a non-conditional one
+KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
+
 # ifneq ($(CONFIG_FRAME_WARN),0)
 # KBUILD_CFLAGS += $(call cc-option,-Wframe-larger-than=${CONFIG_FRAME_WARN})
 # endif
@@ -602,6 +609,8 @@ KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
 KBUILD_CFLAGS	+= -fomit-frame-pointer
 #endif
 #endif
+
+KBUILD_CFLAGS   += $(call cc-option, -fno-var-tracking-assignments)
 
 ifdef CONFIG_DEBUG_INFO
 KBUILD_CFLAGS	+= -g
@@ -642,6 +651,12 @@ KBUILD_CFLAGS	+= $(call cc-option,-fno-strict-overflow)
 
 # conserve stack if available
 KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
+
+# disallow errors like 'EXPORT_GPL(foo);' with missing header
+KBUILD_CFLAGS   += $(call cc-option,-Werror=implicit-int)
+
+# require functions to have arguments in prototypes, not empty 'int foo()'
+KBUILD_CFLAGS   += $(call cc-option,-Werror=strict-prototypes)
 
 # use the deterministic mode of AR if available
 KBUILD_ARFLAGS := $(call ar-option,D)
