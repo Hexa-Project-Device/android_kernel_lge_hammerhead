@@ -76,7 +76,7 @@ config THERMAL_PM8XXX
 choice
 	prompt "MSM Thermal Monitor Types"
 	default THERMAL_MONITOR
-
+	
 config INTELLI_THERMAL_V2
 	bool "Better thermal monitor for MSM"
 	depends on THERMAL_TSENS8974
