@@ -114,7 +114,7 @@ struct dentry {
 		struct list_head d_alias;	/* inode alias list */
 	 	struct rcu_head d_rcu;
 	} d_u;
-};
+	struct hlist_node __d_alias;	/* inode alias list V3.15*/
 
 /*
  * dentry->d_lock spinlock nesting subclasses:
@@ -228,6 +228,8 @@ extern struct dentry * d_make_root(struct inode *);
 
 /* <clickety>-<click> the ramfs-type tree */
 extern void d_genocide(struct dentry *);
+
+extern void d_tmpfile(struct dentry *, struct inode *);
 
 extern struct dentry *d_find_alias(struct inode *);
 extern void d_prune_aliases(struct inode *);
