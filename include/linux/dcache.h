@@ -107,6 +107,7 @@ struct dentry {
 	struct list_head d_lru;		/* LRU list */
 	struct list_head d_child;	/* child of parent list */
 	struct list_head d_subdirs;	/* our children */
+	struct hlist_node __d_alias;	/* inode alias list V3.15*/
 	/*
 	 * d_alias and d_rcu can share memory
 	 */
@@ -228,6 +229,8 @@ extern struct dentry * d_make_root(struct inode *);
 
 /* <clickety>-<click> the ramfs-type tree */
 extern void d_genocide(struct dentry *);
+
+extern void d_tmpfile(struct dentry *, struct inode *);
 
 extern struct dentry *d_find_alias(struct inode *);
 extern void d_prune_aliases(struct inode *);

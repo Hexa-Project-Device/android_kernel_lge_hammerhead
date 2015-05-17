@@ -12,6 +12,7 @@
 #include <linux/f2fs_fs.h>
 #include <linux/buffer_head.h>
 #include <linux/writeback.h>
+#include <linux/bitops.h>
 
 #include "f2fs.h"
 #include "node.h"
@@ -21,20 +22,20 @@
 void f2fs_set_inode_flags(struct inode *inode)
 {
 	unsigned int flags = F2FS_I(inode)->i_flags;
-
-	inode->i_flags &= ~(S_SYNC | S_APPEND | S_IMMUTABLE |
-			S_NOATIME | S_DIRSYNC);
+	unsigned int new_fl = 0;
 
 	if (flags & FS_SYNC_FL)
-		inode->i_flags |= S_SYNC;
+		new_fl |= S_SYNC;
 	if (flags & FS_APPEND_FL)
-		inode->i_flags |= S_APPEND;
+		new_fl |= S_APPEND;
 	if (flags & FS_IMMUTABLE_FL)
-		inode->i_flags |= S_IMMUTABLE;
+		new_fl |= S_IMMUTABLE;
 	if (flags & FS_NOATIME_FL)
-		inode->i_flags |= S_NOATIME;
+		new_fl |= S_NOATIME;
 	if (flags & FS_DIRSYNC_FL)
-		inode->i_flags |= S_DIRSYNC;
+		new_fl |= S_DIRSYNC;
+	set_mask_bits(&inode->i_flags,
+			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC, new_fl);
 }
 
 static void __get_inode_rdev(struct inode *inode, struct f2fs_inode *ri)
@@ -77,6 +78,7 @@ static int do_read_inode(struct inode *inode)
 	if (check_nid_range(sbi, inode->i_ino)) {
 		f2fs_msg(inode->i_sb, KERN_ERR, "bad inode number: %lu",
 			 (unsigned long) inode->i_ino);
+		WARN_ON(1);
 		return -EINVAL;
 	}
 
@@ -87,8 +89,8 @@ static int do_read_inode(struct inode *inode)
 	ri = F2FS_INODE(node_page);
 
 	inode->i_mode = le16_to_cpu(ri->i_mode);
-	inode->i_uid = le32_to_cpu(ri->i_uid);
-	inode->i_gid = le32_to_cpu(ri->i_gid);
+	inode->i_uid  = le32_to_cpu(ri->i_uid);
+	inode->i_gid  = le32_to_cpu(ri->i_gid);
 	set_nlink(inode, le32_to_cpu(ri->i_links));
 	inode->i_size = le64_to_cpu(ri->i_size);
 	inode->i_blocks = le64_to_cpu(ri->i_blocks);
@@ -271,7 +273,7 @@ void f2fs_evict_inode(struct inode *inode)
 
 	if (inode->i_ino == F2FS_NODE_INO(sbi) ||
 			inode->i_ino == F2FS_META_INO(sbi))
-		goto no_delete;
+		goto out_clear;
 
 	f2fs_bug_on(get_dirty_dents(inode));
 	remove_dirty_dir_inode(inode);
@@ -291,5 +293,8 @@ void f2fs_evict_inode(struct inode *inode)
 	f2fs_unlock_op(sbi);
 
 no_delete:
-	end_writeback(inode);
+	invalidate_mapping_pages(NODE_MAPPING(sbi), inode->i_ino, inode->i_ino);
+out_clear:
+	clear_inode(inode);
 }
+
