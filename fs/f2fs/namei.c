@@ -199,7 +199,7 @@ static int __recover_dot_dentries(struct inode *dir, nid_t pino)
 
 	f2fs_lock_op(sbi);
 
-	de = f2fs_find_entry(dir, &dot, &page, 0);
+	de = f2fs_find_entry(dir, &dot, &page);
 	if (de) {
 		f2fs_dentry_kunmap(dir, page);
 		f2fs_put_page(page, 0);
@@ -209,7 +209,7 @@ static int __recover_dot_dentries(struct inode *dir, nid_t pino)
 			goto out;
 	}
 
-	de = f2fs_find_entry(dir, &dotdot, &page, 0);
+	de = f2fs_find_entry(dir, &dotdot, &page);
 	if (de) {
 		f2fs_dentry_kunmap(dir, page);
 		f2fs_put_page(page, 0);
