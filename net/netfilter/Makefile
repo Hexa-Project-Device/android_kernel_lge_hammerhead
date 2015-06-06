@@ -1,5 +1,3 @@
-CFLAGS_KERNEL	:= -fno-unsafe-math-optimizations
-
 netfilter-objs := core.o nf_log.o nf_queue.o nf_sockopt.o
 
 nf_conntrack-y	:= nf_conntrack_core.o nf_conntrack_standalone.o nf_conntrack_expect.o nf_conntrack_helper.o nf_conntrack_proto.o nf_conntrack_l3proto_generic.o nf_conntrack_proto_generic.o nf_conntrack_proto_tcp.o nf_conntrack_proto_udp.o nf_conntrack_extend.o nf_conntrack_acct.o
@@ -123,3 +121,39 @@ obj-$(CONFIG_IP_SET) += ipset/
 
 # IPVS
 obj-$(CONFIG_IP_VS) += ipvs/
+
+ifdef CONFIG_MACH_MSM8974_HAMMERHEAD_STRICT_ALIASING
+  CFLAGS_KERNEL := -fno-strict-aliasing
+endif
+
+ifdef SM_KERNEL_NAME
+  ifneq ($(filter 5.1% 6.0%,$(SM_KERNEL_NAME)),)
+    CFLAGS_nf_conntrack_core.o := \
+      -fno-graphite \
+      -fno-graphite-identity \
+      -fno-loop-flatten \
+      -fno-tree-loop-linear \
+      -fno-loop-interchange \
+      -fno-loop-strip-mine \
+      -fno-loop-block \
+      -fno-loop-nest-optimize \
+      -fno-loop-unroll-and-jam \
+      -fno-loop-parallelize-all \
+      -ftree-parallelize-loops=0 \
+      -fno-openmp
+    CFLAGS_xt_hashlimit.o := \
+      -fno-graphite \
+      -fno-graphite-identity \
+      -fno-loop-flatten \
+      -fno-tree-loop-linear \
+      -fno-loop-interchange \
+      -fno-loop-strip-mine \
+      -fno-loop-block \
+      -fno-loop-nest-optimize \
+      -fno-loop-unroll-and-jam \
+      -fno-loop-parallelize-all \
+      -ftree-parallelize-loops=0 \
+      -fno-openmp
+  endif
+endif
+

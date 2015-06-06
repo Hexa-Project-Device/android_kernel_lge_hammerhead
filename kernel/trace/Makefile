@@ -1,14 +1,14 @@
 
 # Do not instrument the tracer itself:
 
-#ifdef CONFIG_FUNCTION_TRACER
-#ORIG_CFLAGS := $(KBUILD_CFLAGS)
-#KBUILD_CFLAGS = $(subst -pg,,$(ORIG_CFLAGS))
+ifdef CONFIG_FUNCTION_TRACER
+ORIG_CFLAGS := $(KBUILD_CFLAGS)
+KBUILD_CFLAGS = $(subst -pg,,$(ORIG_CFLAGS))
 
 # selftest needs instrumentation
-#CFLAGS_trace_selftest_dynamic.o = -pg
-#obj-y += trace_selftest_dynamic.o
-#endif
+CFLAGS_trace_selftest_dynamic.o = -pg
+obj-y += trace_selftest_dynamic.o
+endif
 
 # If unlikely tracing is enabled, do not trace these files
 ifdef CONFIG_TRACING_BRANCHES
@@ -64,3 +64,8 @@ obj-$(CONFIG_KGDB_KDB) += trace_kdb.o
 endif
 
 libftrace-y := ftrace.o
+
+ifdef CONFIG_MACH_MSM8974_HAMMERHEAD_STRICT_ALIASING
+CFLAGS_ring_buffer.o := -fno-strict-aliasing
+endif
+
