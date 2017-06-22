@@ -10,6 +10,7 @@
 
 #define I2C_SEQ_REG_SETTING_MAX   5
 #define I2C_SEQ_REG_DATA_MAX      20
+#define I2C_REG_DATA_MAX          (8*1024)
 #define MAX_CID                   16
 
 #define MSM_SENSOR_MCLK_8HZ   8000000
@@ -40,9 +41,13 @@
 #define MAX_ACTUATOR_REGION 5
 #define MAX_ACTUATOR_INIT_SET 12
 #define MAX_ACTUATOR_REG_TBL_SIZE 8
+#define MAX_ACTUATOR_AF_TOTAL_STEPS 1024
 
 #define MOVE_NEAR 0
 #define MOVE_FAR  1
+
+#define MSM_ACTUATOR_MOVE_SIGNED_FAR -1
+#define MSM_ACTUATOR_MOVE_SIGNED_NEAR  1
 
 #define MAX_EEPROM_NAME 32
 

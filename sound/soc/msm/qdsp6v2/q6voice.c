@@ -1360,10 +1360,15 @@ static int free_cal_map_table(void)
 
 	ret = msm_audio_ion_free(common.cal_mem_map_table.client,
 		common.cal_mem_map_table.handle);
+<<<<<<< HEAD
 	if (ret < 0) {
 		pr_err("%s: msm_audio_ion_free failed:\n", __func__);
 		ret = -EPERM;
 	}
+=======
+	if (ret < 0)
+		pr_err("%s: msm_audio_ion_free failed:\n", __func__);
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 
 done:
 	common.cal_mem_map_table.client = NULL;
@@ -1394,10 +1399,15 @@ static int free_rtac_map_table(void)
 
 	ret = msm_audio_ion_free(common.rtac_mem_map_table.client,
 		common.rtac_mem_map_table.handle);
+<<<<<<< HEAD
 	if (ret < 0) {
 		pr_err("%s: msm_audio_ion_free failed:\n", __func__);
 		ret = -EPERM;
 	}
+=======
+	if (ret < 0)
+		pr_err("%s: msm_audio_ion_free failed:\n", __func__);
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 
 done:
 	common.rtac_mem_map_table.client = NULL;
@@ -1902,6 +1912,7 @@ static int voice_send_cvs_register_cal_cmd(struct voice_data *v)
 	if (!common.cal_mem_handle) {
 		pr_debug("%s: Cal mem handle is NULL\n", __func__);
 
+		ret = -EINVAL;
 		goto done;
 	}
 
@@ -1909,6 +1920,7 @@ static int voice_send_cvs_register_cal_cmd(struct voice_data *v)
 	if (cal_block.cal_size == 0) {
 		pr_err("%s: CVS cal size is 0\n", __func__);
 
+		ret = -EINVAL;
 		goto done;
 	}
 
@@ -1929,6 +1941,15 @@ static int voice_send_cvs_register_cal_cmd(struct voice_data *v)
 
 	/* Get the column info corresponding to CVS cal from ACDB. */
 	get_voice_col_data(VOCSTRM_CAL, &cal_block);
+	if (cal_block.cal_size == 0 ||
+	    cal_block.cal_size >
+	    sizeof(cvs_reg_cal_cmd.cvs_cal_data.column_info)) {
+		pr_err("%s: Invalid VOCSTRM_CAL size %d\n",
+		       __func__, cal_block.cal_size);
+
+		ret = -EINVAL;
+		goto done;
+	}
 	memcpy(&cvs_reg_cal_cmd.cvs_cal_data.column_info[0],
 	       (void *) cal_block.cal_kvaddr,
 	       cal_block.cal_size);
@@ -2176,6 +2197,7 @@ static int voice_send_cvp_register_cal_cmd(struct voice_data *v)
 	if (!common.cal_mem_handle) {
 		pr_debug("%s: Cal mem handle is NULL\n", __func__);
 
+		ret = -EINVAL;
 		goto done;
 	}
 
@@ -2183,6 +2205,7 @@ static int voice_send_cvp_register_cal_cmd(struct voice_data *v)
 	if (cal_block.cal_size == 0) {
 		pr_err("%s: CVP cal size is 0\n", __func__);
 
+		ret = -EINVAL;
 		goto done;
 	}
 
@@ -2203,6 +2226,16 @@ static int voice_send_cvp_register_cal_cmd(struct voice_data *v)
 
 	/* Get the column info corresponding to CVP cal from ACDB. */
 	get_voice_col_data(VOCPROC_CAL, &cal_block);
+	if (cal_block.cal_size == 0 ||
+	    cal_block.cal_size >
+	    sizeof(cvp_reg_cal_cmd.cvp_cal_data.column_info)) {
+		pr_err("%s: Invalid VOCPROC_CAL size %d\n",
+		       __func__, cal_block.cal_size);
+
+		ret = -EINVAL;
+		goto done;
+	}
+
 	memcpy(&cvp_reg_cal_cmd.cvp_cal_data.column_info[0],
 	       (void *) cal_block.cal_kvaddr,
 	       cal_block.cal_size);
@@ -2313,6 +2346,7 @@ static int voice_send_cvp_register_vol_cal_cmd(struct voice_data *v)
 	if (!common.cal_mem_handle) {
 		pr_debug("%s: Cal mem handle is NULL\n", __func__);
 
+		ret = -EINVAL;
 		goto done;
 	}
 
@@ -2320,6 +2354,7 @@ static int voice_send_cvp_register_vol_cal_cmd(struct voice_data *v)
 	if (cal_block.cal_size == 0) {
 		pr_err("%s: CVP vol cal size is 0\n", __func__);
 
+		ret = -EINVAL;
 		goto done;
 	}
 
@@ -2342,6 +2377,16 @@ static int voice_send_cvp_register_vol_cal_cmd(struct voice_data *v)
 
 	/* Get the column info corresponding to CVP volume cal from ACDB. */
 	get_voice_col_data(VOCVOL_CAL, &cal_block);
+	if (cal_block.cal_size == 0 ||
+	    cal_block.cal_size >
+	    sizeof(cvp_reg_vol_cal_cmd.cvp_vol_cal_data.column_info)) {
+		pr_err("%s: Invalid VOCVOL_CAL size %d\n",
+		       __func__, cal_block.cal_size);
+
+		ret = -EINVAL;
+		goto done;
+	}
+
 	memcpy(&cvp_reg_vol_cal_cmd.cvp_vol_cal_data.column_info[0],
 	       (void *) cal_block.cal_kvaddr,
 	       cal_block.cal_size);
@@ -2633,6 +2678,118 @@ static int voice_map_memory_physical_cmd(struct voice_data *v,
 
 fail:
 	return -EINVAL;
+}
+
+int voc_map_rtac_block(struct rtac_cal_block_data *cal_block)
+{
+	int			result = 0;
+	struct voice_data	*v = NULL;
+
+	pr_debug("%s\n", __func__);
+
+	if (cal_block == NULL) {
+		pr_err("%s: cal_block is NULL!\n",
+			__func__);
+
+		result = -EINVAL;
+		goto done;
+	}
+
+	if (cal_block->cal_data.paddr == 0) {
+		pr_debug("%s: No address to map!\n",
+			__func__);
+
+		result = -EINVAL;
+		goto done;
+	}
+
+	if (cal_block->map_data.map_size == 0) {
+		pr_debug("%s: map size is 0!\n",
+			__func__);
+
+		result = -EINVAL;
+		goto done;
+	}
+
+	mutex_lock(&common.common_lock);
+	/* use first session */
+	v = &common.voice[0];
+	mutex_lock(&v->lock);
+
+	if (!is_rtac_memory_allocated()) {
+		result = voice_alloc_rtac_mem_map_table();
+		if (result < 0) {
+			pr_err("%s: RTAC alloc mem map table did not work! addr = 0x%x, size = %d\n",
+				__func__, cal_block->cal_data.paddr,
+				cal_block->map_data.map_size);
+
+			goto done_unlock;
+		}
+	}
+
+	result = voice_map_memory_physical_cmd(v,
+		&common.rtac_mem_map_table,
+		(dma_addr_t)cal_block->cal_data.paddr,
+		cal_block->map_data.map_size,
+		VOC_RTAC_MEM_MAP_TOKEN);
+	if (result < 0) {
+		pr_err("%s: RTAC mmap did not work! addr = 0x%x, size = %d\n",
+			__func__, cal_block->cal_data.paddr,
+			cal_block->map_data.map_size);
+
+		free_rtac_map_table();
+		goto done_unlock;
+	}
+
+	cal_block->map_data.map_handle = common.rtac_mem_handle;
+done_unlock:
+	mutex_unlock(&v->lock);
+	mutex_unlock(&common.common_lock);
+done:
+	return result;
+}
+
+int voc_unmap_rtac_block(uint32_t *mem_map_handle)
+{
+	int			result = 0;
+	struct voice_data	*v = NULL;
+
+	pr_debug("%s\n", __func__);
+
+	if (mem_map_handle == NULL) {
+		pr_debug("%s: Map handle is NULL, nothing to unmap\n",
+			__func__);
+
+		goto done;
+	}
+
+	if (*mem_map_handle == 0) {
+		pr_debug("%s: Map handle is 0, nothing to unmap\n",
+			__func__);
+
+		goto done;
+	}
+
+	mutex_lock(&common.common_lock);
+	/* Use first session */
+	/* Only used for apr wait lock */
+	v = &common.voice[0];
+	mutex_lock(&v->lock);
+
+	result = voice_send_mvm_unmap_memory_physical_cmd(
+			v, *mem_map_handle);
+	if (result) {
+		pr_err("%s: voice_send_mvm_unmap_memory_physical_cmd Failed for session 0x%x!\n",
+			__func__, v->session_id);
+	} else {
+		*mem_map_handle = 0;
+		common.rtac_mem_handle = 0;
+		free_rtac_map_table();
+	}
+	mutex_unlock(&v->lock);
+	mutex_unlock(&common.common_lock);
+done:
+	return result;
 }
 
 static int voice_mem_map_cal_block(struct voice_data *v)
@@ -5333,6 +5490,8 @@ static int voice_free_oob_shared_mem(void)
 
 	rc = msm_audio_ion_free(v->shmem_info.sh_buf.client,
 				v->shmem_info.sh_buf.handle);
+	v->shmem_info.sh_buf.client = NULL;
+	v->shmem_info.sh_buf.handle = NULL;
 	if (rc < 0) {
 		pr_err("%s: Error:%d freeing memory\n", __func__, rc);
 

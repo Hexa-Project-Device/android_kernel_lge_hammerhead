@@ -394,6 +394,8 @@ static s32 wl_notify_pfn_status(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
 #ifdef GSCAN_SUPPORT
 static s32 wl_notify_gscan_event(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
 	const wl_event_msg_t *e, void *data);
+static s32 wl_handle_roam_exp_event(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
+	const wl_event_msg_t *e, void *data);
 #endif
 static s32 wl_notifier_change_state(struct wl_priv *wl, struct net_info *_net_info,
 	enum wl_status state, bool set);
@@ -715,7 +717,9 @@ static const u32 __wl_cipher_suites[] = {
 	WLAN_CIPHER_SUITE_WEP104,
 	WLAN_CIPHER_SUITE_TKIP,
 	WLAN_CIPHER_SUITE_CCMP,
+#ifdef MFP
 	WLAN_CIPHER_SUITE_AES_CMAC,
+#endif
 };
 
 
@@ -1012,10 +1016,13 @@ wl_validate_wps_ie(char *wps_ie, s32 wps_ie_len, bool *pbc)
 			WL_DBG(("  attr WPS_ID_CONFIG_METHODS: %x\n", HTON16(val)));
 		} else if (subelt_id == WPS_ID_DEVICE_NAME) {
 			char devname[100];
-			memcpy(devname, subel, subelt_len);
-			devname[subelt_len] = '\0';
-			WL_DBG(("  attr WPS_ID_DEVICE_NAME: %s (len %u)\n",
-				devname, subelt_len));
+			size_t namelen = MIN(subelt_len, sizeof(devname));
+			if (namelen) {
+				memcpy(devname, subel, namelen);
+				devname[namelen - 1] = '\0';
+				WL_DBG(("  attr WPS_ID_DEVICE_NAME: %s (len %u)\n",
+					devname, subelt_len));
+			}
 		} else if (subelt_id == WPS_ID_DEVICE_PWD_ID) {
 			valptr[0] = *subel;
 			valptr[1] = *(subel + 1);
@@ -1808,15 +1815,18 @@ static void wl_scan_prep(struct wl_scan_params *params, struct cfg80211_scan_req
 		WL_SCAN(("Scanning all channels\n"));
 	}
 	n_channels = j;
+
 	/* Copy ssid array if applicable */
 	WL_SCAN(("### List of SSIDs to scan ###\n"));
 	if (n_ssids > 0) {
 		offset = offsetof(wl_scan_params_t, channel_list) + n_channels * sizeof(u16);
 		offset = roundup(offset, sizeof(u32));
 		ptr = (char*)params + offset;
+
 		for (i = 0; i < n_ssids; i++) {
 			memset(&ssid, 0, sizeof(wlc_ssid_t));
-			ssid.SSID_len = request->ssids[i].ssid_len;
+			ssid.SSID_len = MIN(request->ssids[i].ssid_len,
+					    DOT11_MAX_SSID_LEN);
 			memcpy(ssid.SSID, request->ssids[i].ssid, ssid.SSID_len);
 			if (!ssid.SSID_len)
 				WL_SCAN(("%d: Broadcast scan\n", i));
@@ -2709,10 +2719,12 @@ wl_cfg80211_join_ibss(struct wiphy *wiphy, struct net_device *dev,
 	WL_TRACE(("In\n"));
 	RETURN_EIO_IF_NOT_UP(wl);
 	WL_INFO(("JOIN BSSID:" MACDBG "\n", MAC2STRDBG(params->bssid)));
-	if (!params->ssid || params->ssid_len <= 0) {
+
+	if (!params->ssid || params->ssid_len <= 0 || params->ssid_len > DOT11_MAX_SSID_LEN) {
 		WL_ERR(("Invalid parameter\n"));
 		return -EINVAL;
 	}
+
 	if (wl_get_drv_status(wl, CONNECTED, dev)) {
 		struct wlc_ssid *ssid = (struct wlc_ssid *)wl_read_prof(wl, dev, WL_PROF_SSID);
 		u8 *bssid = (u8 *)wl_read_prof(wl, dev, WL_PROF_BSSID);
@@ -3208,6 +3220,9 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 	}
 #endif
 #ifdef WL_SCHED_SCAN
+	/* Locks are taken in wl_cfg80211_sched_scan_stop()
+	 * A start scan occuring during connect is unlikely
+	 */
 	if (wl->sched_scan_req) {
 		wl_cfg80211_sched_scan_stop(wiphy, wl_to_prmry_ndev(wl));
 	}
@@ -5720,17 +5735,16 @@ static s32 wl_cfg80211_bcn_set_params(
 		}
 	}
 
-	if ((info->ssid) && (info->ssid_len > 0) &&
-		(info->ssid_len <= 32)) {
+	if ((info->ssid) && (info->ssid_len > 0) && (info->ssid_len <= DOT11_MAX_SSID_LEN)) {
 		WL_DBG(("SSID (%s) len:%d \n", info->ssid, info->ssid_len));
 		if (dev_role == NL80211_IFTYPE_AP) {
 			/* Store the hostapd SSID */
-			memset(wl->hostapd_ssid.SSID, 0x00, 32);
+			memset(wl->hostapd_ssid.SSID, 0x00, DOT11_MAX_SSID_LEN);
 			memcpy(wl->hostapd_ssid.SSID, info->ssid, info->ssid_len);
 			wl->hostapd_ssid.SSID_len = info->ssid_len;
 		} else {
-				/* P2P GO */
-			memset(wl->p2p->ssid.SSID, 0x00, 32);
+			/* P2P GO */
+			memset(wl->p2p->ssid.SSID, 0x00, DOT11_MAX_SSID_LEN);
 			memcpy(wl->p2p->ssid.SSID, info->ssid, info->ssid_len);
 			wl->p2p->ssid.SSID_len = info->ssid_len;
 		}
@@ -5860,11 +5874,13 @@ wl_cfg80211_bcn_bringup_ap(
 		}
 
 		memset(&join_params, 0, sizeof(join_params));
+
 		/* join parameters starts with ssid */
 		join_params_size = sizeof(join_params.ssid);
-		memcpy(join_params.ssid.SSID, wl->hostapd_ssid.SSID,
-			wl->hostapd_ssid.SSID_len);
-		join_params.ssid.SSID_len = htod32(wl->hostapd_ssid.SSID_len);
+		join_params.ssid.SSID_len = MIN(wl->hostapd_ssid.SSID_len,
+						(uint32)DOT11_MAX_SSID_LEN);
+		memcpy(join_params.ssid.SSID, wl->hostapd_ssid.SSID, join_params.ssid.SSID_len);
+		join_params.ssid.SSID_len = htod32(join_params.ssid.SSID_len);
 
 		/* create softap */
 		if ((err = wldev_ioctl(dev, WLC_SET_SSID, &join_params,
@@ -6371,20 +6387,24 @@ wl_cfg80211_add_set_beacon(struct wiphy *wiphy, struct net_device *dev,
 		goto fail;
 
 	ie_offset = DOT11_MGMT_HDR_LEN + DOT11_BCN_PRB_FIXED_LEN;
+
 	/* find the SSID */
 	if ((ssid_ie = bcm_parse_tlvs((u8 *)&info->head[ie_offset],
 		info->head_len - ie_offset,
 		DOT11_MNG_SSID_ID)) != NULL) {
 		if (dev_role == NL80211_IFTYPE_AP) {
 			/* Store the hostapd SSID */
-			memset(&wl->hostapd_ssid.SSID[0], 0x00, 32);
-			memcpy(&wl->hostapd_ssid.SSID[0], ssid_ie->data, ssid_ie->len);
-			wl->hostapd_ssid.SSID_len = ssid_ie->len;
+			memset(&wl->hostapd_ssid.SSID[0], 0x00, DOT11_MAX_SSID_LEN);
+			wl->hostapd_ssid.SSID_len = MIN(ssid_ie->len,
+							DOT11_MAX_SSID_LEN);
+			memcpy(&wl->hostapd_ssid.SSID[0], ssid_ie->data,
+				wl->hostapd_ssid.SSID_len);
 		} else {
-				/* P2P GO */
-			memset(&wl->p2p->ssid.SSID[0], 0x00, 32);
-			memcpy(wl->p2p->ssid.SSID, ssid_ie->data, ssid_ie->len);
-			wl->p2p->ssid.SSID_len = ssid_ie->len;
+			/* P2P GO */
+			memset(&wl->p2p->ssid.SSID[0], 0x00, DOT11_MAX_SSID_LEN);
+			wl->p2p->ssid.SSID_len = MIN(ssid_ie->len,
+						     DOT11_MAX_SSID_LEN);
+			memcpy(wl->p2p->ssid.SSID, ssid_ie->data, wl->p2p->ssid.SSID_len);
 		}
 	}
 
@@ -6496,6 +6516,7 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 	int ssid_cnt = 0;
 	int i;
 	int ret = 0;
+	unsigned long flags;
 
 	WL_DBG(("Enter \n"));
 	WL_PNO((">>> SCHED SCAN START\n"));
@@ -6519,8 +6540,11 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 		ssid = &request->match_sets[i].ssid;
 		/* No need to include null ssid */
 		if (ssid->ssid_len) {
-			memcpy(ssids_local[ssid_cnt].SSID, ssid->ssid, ssid->ssid_len);
-			ssids_local[ssid_cnt].SSID_len = ssid->ssid_len;
+			ssids_local[ssid_cnt].SSID_len = MIN(ssid->ssid_len,
+				(uint8)DOT11_MAX_SSID_LEN);
+			memcpy(ssids_local[ssid_cnt].SSID, ssid->ssid,
+				ssids_local[ssid_cnt].SSID_len);
+
 			if (is_ssid_in_list(ssid, hidden_ssid_list, request->n_ssids)) {
 				ssids_local[ssid_cnt].hidden = TRUE;
 				WL_PNO((">>> PNO hidden SSID (%s) \n", ssid->ssid));
@@ -6538,7 +6562,9 @@ wl_cfg80211_sched_scan_start(struct wiphy *wiphy,
 			WL_ERR(("PNO setup failed!! ret=%d \n", ret));
 			return -EINVAL;
 		}
+		spin_lock_irqsave(&wl->cfgdrv_lock, flags);
 		wl->sched_scan_req = request;
+		spin_unlock_irqrestore(&wl->cfgdrv_lock, flags);
 	} else {
 		return -EINVAL;
 	}
@@ -6550,6 +6576,7 @@ static int
 wl_cfg80211_sched_scan_stop(struct wiphy *wiphy, struct net_device *dev)
 {
 	struct wl_priv *wl = wiphy_priv(wiphy);
+	unsigned long flags;
 
 	WL_DBG(("Enter \n"));
 	WL_PNO((">>> SCHED SCAN STOP\n"));
@@ -6561,10 +6588,10 @@ wl_cfg80211_sched_scan_stop(struct wiphy *wiphy, struct net_device *dev)
 		WL_PNO((">>> Sched scan running. Aborting it..\n"));
 		wl_notify_escan_complete(wl, dev, true, true);
 	}
-
-	 wl->sched_scan_req = NULL;
-	 wl->sched_scan_running = FALSE;
-
+	spin_lock_irqsave(&wl->cfgdrv_lock, flags);
+	wl->sched_scan_req = NULL;
+	wl->sched_scan_running = FALSE;
+	spin_unlock_irqrestore(&wl->cfgdrv_lock, flags);
 	return 0;
 }
 #endif /* WL_SCHED_SCAN */
@@ -7413,6 +7440,39 @@ wl_notify_connect_status(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
 	return err;
 }
 
+
+#ifdef GSCAN_SUPPORT
+static s32
+wl_handle_roam_exp_event(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
+	const wl_event_msg_t *e, void *data)
+{
+	struct net_device *ndev = NULL;
+	u32 datalen = be32_to_cpu(e->datalen);
+
+	if (datalen) {
+		wl_roam_exp_event_t *evt_data = (wl_roam_exp_event_t *)data;
+		if (evt_data->version == ROAM_EXP_EVENT_VERSION) {
+			wlc_ssid_t *ssid = &evt_data->cur_ssid;
+			struct wireless_dev *wdev;
+			ndev = cfgdev_to_wlc_ndev(cfgdev, wl);
+			if (ndev) {
+				wdev = ndev->ieee80211_ptr;
+				wdev->ssid_len = min(ssid->SSID_len, (uint32)DOT11_MAX_SSID_LEN);
+				memcpy(wdev->ssid, ssid->SSID, wdev->ssid_len);
+				WL_ERR(("SSID is %s\n", ssid->SSID));
+				wl_update_prof(wl, ndev, NULL, ssid, WL_PROF_SSID);
+			} else {
+				WL_ERR(("NULL ndev!\n"));
+			}
+		} else {
+			WL_ERR(("Version mismatch %d, expected %d", evt_data->version,
+			       ROAM_EXP_EVENT_VERSION));
+		}
+	}
+	return BCME_OK;
+}
+#endif /* GSCAN_SUPPORT */
+
 static s32
 wl_notify_roaming_status(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
 	const wl_event_msg_t *e, void *data)
@@ -7798,10 +7858,27 @@ wl_notify_pfn_status(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
 	const wl_event_msg_t *e, void *data)
 {
 	struct net_device *ndev = NULL;
+#ifdef GSCAN_SUPPORT
+	void *ptr;
+	int send_evt_bytes = 0;
+	u32 event = be32_to_cpu(e->event_type);
+	struct wiphy *wiphy = wl_to_wiphy(wl);
+#endif /* GSCAN_SUPPORT */
 
 	WL_ERR((">>> PNO Event\n"));
 
 	ndev = cfgdev_to_wlc_ndev(cfgdev, wl);
+
+#ifdef GSCAN_SUPPORT
+	ptr = dhd_dev_process_epno_result(ndev, data, event, &send_evt_bytes);
+	if (ptr) {
+		wl_cfgvendor_send_async_event(wiphy, ndev,
+			GOOGLE_SCAN_EPNO_EVENT, ptr, send_evt_bytes);
+		kfree(ptr);
+	}
+	if (!dhd_dev_is_legacy_pno_enabled(ndev))
+		return 0;
+#endif /* GSCAN_SUPPORT */
 
 #ifndef WL_SCHED_SCAN
 	mutex_lock(&wl->usr_sync);
@@ -7888,7 +7965,17 @@ wl_notify_gscan_event(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
 				kfree(ptr);
 			}
 			break;
-
+		case WLC_E_PFN_SSID_EXT:
+			ptr = dhd_dev_process_epno_result(ndev, data, event, &send_evt_bytes);
+			if (ptr) {
+				wl_cfgvendor_send_async_event(wiphy, ndev,
+				    GOOGLE_SCAN_EPNO_EVENT, ptr, send_evt_bytes);
+				kfree(ptr);
+			}
+			break;
+		default:
+			WL_ERR(("Unknown event %d\n", event));
+			break;
 	}
 	return err;
 }
@@ -8274,10 +8361,9 @@ wl_notify_sched_scan_results(struct wl_priv *wl, struct net_device *ndev,
 			 * scan request in the form of cfg80211_scan_request. For timebeing, create
 			 * cfg80211_scan_request one out of the received PNO event.
 			 */
-			memcpy(ssid[i].ssid, netinfo->pfnsubnet.SSID,
-				netinfo->pfnsubnet.SSID_len);
-			ssid[i].ssid_len = netinfo->pfnsubnet.SSID_len;
-			request->n_ssids++;
+			ssid[i].ssid_len = MIN(DOT11_MAX_SSID_LEN, netinfo->pfnsubnet.SSID_len);
+ 			memcpy(ssid[i].ssid, netinfo->pfnsubnet.SSID, ssid[i].ssid_len);
+ 			request->n_ssids++;
 
 			channel_req = netinfo->pfnsubnet.channel;
 			band = (channel_req <= CH_MAX_2G_CHANNEL) ? NL80211_BAND_2GHZ
@@ -8388,6 +8474,8 @@ static void wl_init_event_handler(struct wl_priv *wl)
 	wl->evt_handler[WLC_E_PFN_SWC] = wl_notify_gscan_event;
 	wl->evt_handler[WLC_E_PFN_BSSID_NET_FOUND] = wl_notify_gscan_event;
 	wl->evt_handler[WLC_E_PFN_BSSID_NET_LOST] = wl_notify_gscan_event;
+	wl->evt_handler[WLC_E_PFN_SSID_EXT] = wl_notify_gscan_event;
+	wl->evt_handler[WLC_E_ROAM_EXP_EVENT] = wl_handle_roam_exp_event;
 #endif /* GSCAN_SUPPORT */
 #ifdef WLTDLS
 	wl->evt_handler[WLC_E_TDLS_PEER_EVENT] = wl_tdls_event_handler;
@@ -8931,11 +9019,14 @@ static s32 wl_notify_escan_complete(struct wl_priv *wl,
 	spin_lock_irqsave(&wl->cfgdrv_lock, flags);
 #ifdef WL_SCHED_SCAN
 	if (wl->sched_scan_req && !wl->scan_request) {
-		WL_PNO((">>> REPORTING SCHED SCAN RESULTS \n"));
-		if (!aborted)
+		int count;
+
+		count = wl->bss_list ? wl->bss_list->count : 0;
+		if (!aborted) {
 			cfg80211_sched_scan_results(wl->sched_scan_req->wiphy);
+			printk(">> SCHED SCAN RESULT %d\n", count);
+		}
 		wl->sched_scan_running = FALSE;
-		wl->sched_scan_req = NULL;
 	}
 #endif /* WL_SCHED_SCAN */
 	if (likely(wl->scan_request)) {
@@ -9172,7 +9263,16 @@ static s32 wl_escan_handler(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
 		}
 		wl_escan_increment_sync_id(wl, SCAN_BUF_NEXT);
 	}
+#ifdef GSCAN_SUPPORT
+	else if ((status == WLC_E_STATUS_ABORT) || (status == WLC_E_STATUS_NEWSCAN)) {
+		if (status == WLC_E_STATUS_NEWSCAN) {
+			WL_ERR(("WLC_E_STATUS_NEWSCAN : scan_request[%p]\n", wl->scan_request));
+			WL_ERR(("sync_id[%d], bss_count[%d]\n", escan_result->sync_id,
+				escan_result->bss_count));
+		}
+#else
 	else if (status == WLC_E_STATUS_ABORT) {
+#endif /* GSCAN_SUPPORT */
 		wl->escan_info.escan_state = WL_ESCAN_STATE_IDLE;
 		wl_escan_print_sync_id(status, escan_result->sync_id,
 			wl->escan_info.cur_sync_id);
@@ -10547,10 +10647,10 @@ wl_update_prof(struct wl_priv *wl, struct net_device *ndev,
 	switch (item) {
 	case WL_PROF_SSID:
 		ssid = (wlc_ssid_t *) data;
-		memset(profile->ssid.SSID, 0,
-			sizeof(profile->ssid.SSID));
-		memcpy(profile->ssid.SSID, ssid->SSID, ssid->SSID_len);
-		profile->ssid.SSID_len = ssid->SSID_len;
+		memset(profile->ssid.SSID, 0, sizeof(profile->ssid.SSID));
+		profile->ssid.SSID_len = MIN(ssid->SSID_len,
+					     DOT11_MAX_SSID_LEN);
+		memcpy(profile->ssid.SSID, ssid->SSID, profile->ssid.SSID_len);
 		break;
 	case WL_PROF_BSSID:
 		if (data)
@@ -10633,23 +10733,44 @@ static __used s32 wl_add_ie(struct wl_priv *wl, u8 t, u8 l, u8 *v)
 static void wl_update_hidden_ap_ie(struct wl_bss_info *bi, u8 *ie_stream, u32 *ie_size)
 {
 	u8 *ssidie;
+	int32 ssid_len = MIN(bi->SSID_len, DOT11_MAX_SSID_LEN);
+	int32 remaining_ie_buf_len, available_buffer_len;
 	ssidie = (u8 *)cfg80211_find_ie(WLAN_EID_SSID, ie_stream, *ie_size);
+
+	/*
+	 * ERROR out if
+	 * 1. No ssid IE is FOUND or
+	 * 2. New ssid length is > what was allocated for existing ssid (as
+	 *    we do not want to overwrite the rest of the IEs) or
+	 * 3. If in case of erroneous buffer input where ssid length doesnt match the space
+	 *    allocated to it.
+	 */
 	if (!ssidie)
 		return;
-	if (ssidie[1] != bi->SSID_len) {
+
+	available_buffer_len = ((int)(*ie_size)) - (ssidie + 2 - ie_stream);
+	remaining_ie_buf_len = available_buffer_len - (int)ssidie[1];
+	if ((ssid_len > ssidie[1]) || (ssidie[1] > available_buffer_len))
+		return;
+
+	if (ssidie[1] != ssid_len) {
 		if (ssidie[1]) {
 			WL_ERR(("%s: Wrong SSID len: %d != %d\n",
 				__FUNCTION__, ssidie[1], bi->SSID_len));
 			return;
 		}
-		memmove(ssidie + bi->SSID_len + 2, ssidie + 2, *ie_size - (ssidie + 2 - ie_stream));
-		memcpy(ssidie + 2, bi->SSID, bi->SSID_len);
-		*ie_size = *ie_size + bi->SSID_len;
-		ssidie[1] = bi->SSID_len;
+
+		WL_ERR(("Changing the SSID Info.\n"));
+		memmove(ssidie + ssid_len + 2,
+			(ssidie + 2) + ssidie[1], remaining_ie_buf_len);
+		memcpy(ssidie + 2, bi->SSID, ssid_len);
+		*ie_size = *ie_size + ssid_len - ssidie[1];
+		ssidie[1] = ssid_len;
 		return;
 	}
+
 	if (*(ssidie + 2) == '\0')
-		 memcpy(ssidie + 2, bi->SSID, bi->SSID_len);
+		 memcpy(ssidie + 2, bi->SSID, ssid_len);
 	return;
 }
 

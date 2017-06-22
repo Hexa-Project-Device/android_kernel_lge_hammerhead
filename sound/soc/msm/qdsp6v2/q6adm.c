@@ -34,6 +34,10 @@
 /* Used for inband payload copy, max size is 4k */
 /* 2 is to account for module & param ID in payload */
 #define ADM_GET_PARAMETER_LENGTH  (4096 - APR_HDR_SIZE - 2 * sizeof(uint32_t))
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 
 #define ULL_SUPPORTED_SAMPLE_RATE 48000
 #define ULL_MAX_SUPPORTED_CHANNEL 2
@@ -623,12 +627,21 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 				break;
 
 			if (data->payload_size > (4 * sizeof(uint32_t))) {
+<<<<<<< HEAD
 				adm_get_parameters[0] = payload[3];
 				pr_debug("GET_PP PARAM:received parameter length: %x\n",
 						adm_get_parameters[0]);
 				/* storing param size then params */
 				for (i = 0; i < payload[3]; i++)
 					adm_get_parameters[1+i] = payload[4+i];
+=======
+				adm_dolby_get_parameters[0] = payload[3];
+				pr_debug("GET_PP PARAM:received parameter length: %x\n",
+						adm_dolby_get_parameters[0]);
+				/* storing param size then params */
+				for (i = 0; i < payload[3]; i++)
+					adm_dolby_get_parameters[1+i] = payload[4+i];
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 			}
 			atomic_set(&this_adm.copp_stat[index], 1);
 			wake_up(&this_adm.wait[index]);

@@ -309,7 +309,7 @@ struct hfi_multi_view_select {
 };
 
 #define HFI_PRIORITY_LOW		10
-#define HFI_PRIOIRTY_MEDIUM		20
+#define HFI_PRIORITY_MEDIUM		20
 #define HFI_PRIORITY_HIGH		30
 
 #define HFI_OUTPUT_ORDER_DISPLAY	(HFI_OX_BASE + 0x1)
@@ -848,6 +848,7 @@ struct msm_vidc_fw {
 };
 
 u32 hfi_process_msg_packet(msm_vidc_callback callback,
-		u32 device_id, struct vidc_hal_msg_pkt_hdr *msg_hdr);
+		u32 device_id, struct vidc_hal_msg_pkt_hdr *msg_hdr,
+		struct list_head *sessions, struct mutex *session_lock);
 #endif
 

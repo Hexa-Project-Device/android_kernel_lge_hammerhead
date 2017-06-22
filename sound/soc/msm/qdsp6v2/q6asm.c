@@ -45,6 +45,7 @@
 
 #define TRUE        0x01
 #define FALSE       0x00
+#define FRAME_NUM   (8)
 
 /* TODO, combine them together */
 static DEFINE_MUTEX(session_lock);
@@ -662,6 +663,8 @@ int q6asm_audio_client_buf_free(unsigned int dir,
 			if (port->buf[cnt].data) {
 				msm_audio_ion_free(port->buf[cnt].client,
 						   port->buf[cnt].handle);
+				port->buf[cnt].client = NULL;
+				port->buf[cnt].handle = NULL;
 				port->buf[cnt].data = NULL;
 				port->buf[cnt].phys = 0;
 				--(port->max_buf_cnt);
@@ -698,7 +701,6 @@ int q6asm_audio_client_buf_free_contiguous(unsigned int dir,
 	}
 
 	if (port->buf[0].data) {
-		msm_audio_ion_free(port->buf[0].client, port->buf[0].handle);
 		pr_debug("%s:data[%p]phys[%p][%p] , client[%p] handle[%p]\n",
 			__func__,
 			(void *)port->buf[0].data,
@@ -706,6 +708,9 @@ int q6asm_audio_client_buf_free_contiguous(unsigned int dir,
 			(void *)&port->buf[0].phys,
 			(void *)port->buf[0].client,
 			(void *)port->buf[0].handle);
+		msm_audio_ion_free(port->buf[0].client, port->buf[0].handle);
+		port->buf[0].client = NULL;
+		port->buf[0].handle = NULL;
 	}
 
 	while (cnt >= 0) {
@@ -913,6 +918,8 @@ int q6asm_audio_client_buf_alloc(unsigned int dir,
 			pr_debug("%s: buffer already allocated\n", __func__);
 			return 0;
 		}
+                if (bufcnt != FRAME_NUM)
+                        goto fail;
 		mutex_lock(&ac->cmd_lock);
 		buf = kzalloc(((sizeof(struct audio_buffer))*bufcnt),
 				GFP_KERNEL);
@@ -1002,6 +1009,13 @@ int q6asm_audio_client_buf_alloc_contiguous(unsigned int dir,
 	}
 
 	ac->port[dir].buf = buf;
+
+	/* check for integer overflow */
+	if ((bufcnt > 0) && ((UINT_MAX / bufcnt) < bufsz)) {
+		pr_err("%s: integer overflow\n", __func__);
+		mutex_unlock(&ac->cmd_lock);
+		goto fail;
+	}
 
 	bytes_to_alloc = bufsz * bufcnt;
 

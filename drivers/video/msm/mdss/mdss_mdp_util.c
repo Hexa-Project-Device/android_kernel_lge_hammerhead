@@ -446,25 +446,30 @@ int mdss_mdp_put_img(struct mdss_mdp_img_data *data)
 		pr_debug("pmem buf=0x%x\n", data->addr);
 		data->srcp_file = NULL;
 	} else if (!IS_ERR_OR_NULL(data->srcp_ihdl)) {
-		pr_debug("ion hdl=%p buf=0x%x\n", data->srcp_ihdl, data->addr);
+		pr_debug("ion hdl=%pK buf=0x%x\n", data->srcp_ihdl, data->addr);
+		if (!iclient) {
+			pr_err("invalid_ion client\n");
+			return -ENOMEM;
+		} else {
+			if (data->mapped) {
+				int domain;
+				if (data->flags & MDP_SECURE_OVERLAY_SESSION)
+					domain = MDSS_IOMMU_DOMAIN_SECURE;
+				else
+					domain = MDSS_IOMMU_DOMAIN_UNSECURE;
+				ion_unmap_iommu(iclient, data->srcp_ihdl,
+						mdss_get_iommu_domain(domain), 0);
 
-		if (is_mdss_iommu_attached()) {
-			int domain;
-			if (data->flags & MDP_SECURE_OVERLAY_SESSION)
-				domain = MDSS_IOMMU_DOMAIN_SECURE;
-			else
-				domain = MDSS_IOMMU_DOMAIN_UNSECURE;
-			ion_unmap_iommu(iclient, data->srcp_ihdl,
-					mdss_get_iommu_domain(domain), 0);
-
-			if (domain == MDSS_IOMMU_DOMAIN_SECURE) {
-				msm_ion_unsecure_buffer(iclient,
-					data->srcp_ihdl);
+				if (domain == MDSS_IOMMU_DOMAIN_SECURE) {
+					msm_ion_unsecure_buffer(iclient,
+							data->srcp_ihdl);
+				}
+				data->mapped = false;
 			}
+			ion_free(iclient, data->srcp_ihdl);
+			data->srcp_ihdl = NULL;
 		}
 
-		ion_free(iclient, data->srcp_ihdl);
-		data->srcp_ihdl = NULL;
 	} else {
 		return -ENOMEM;
 	}
@@ -538,6 +543,7 @@ int mdss_mdp_get_img(struct msmfb_data *img, struct mdss_mdp_img_data *data)
 			if (ret && (domain == MDSS_IOMMU_DOMAIN_SECURE))
 				msm_ion_unsecure_buffer(iclient,
 						data->srcp_ihdl);
+			data->mapped = true;
 		} else {
 			ret = ion_phys(iclient, data->srcp_ihdl, start,
 				       (size_t *) len);
@@ -560,7 +566,7 @@ int mdss_mdp_get_img(struct msmfb_data *img, struct mdss_mdp_img_data *data)
 		data->addr += img->offset;
 		data->len -= img->offset;
 
-		pr_debug("mem=%d ihdl=%p buf=0x%x len=0x%x\n", img->memory_id,
+		pr_debug("mem=%d ihdl=%pK buf=0x%x len=0x%x\n", img->memory_id,
 			 data->srcp_ihdl, data->addr, data->len);
 	} else {
 		mdss_mdp_put_img(data);

@@ -356,8 +356,9 @@ wls_parse_batching_cmd(struct net_device *dev, char *command, int total_len)
 					" <> params\n", __FUNCTION__));
 					goto exit;
 				}
-					while ((token2 = strsep(&pos2,
-					PNO_PARAM_CHANNEL_DELIMETER)) != NULL) {
+
+				while ((token2 = strsep(&pos2, PNO_PARAM_CHANNEL_DELIMETER))
+						!= NULL) {
 					if (token2 == NULL || !*token2)
 						break;
 					if (*token2 == '\0')
@@ -368,11 +369,18 @@ wls_parse_batching_cmd(struct net_device *dev, char *command, int total_len)
 						DHD_PNO(("band : %s\n",
 							(*token2 == 'A')? "A" : "B"));
 					} else {
+						if ((batch_params.nchan >= WL_NUMCHANNELS) ||
+						    (i >= WL_NUMCHANNELS)) {
+							DHD_ERROR(("Too many nchan %d\n",
+								batch_params.nchan));
+							err = BCME_BUFTOOSHORT;
+							goto exit;
+						}
 						batch_params.chan_list[i++] =
-						simple_strtol(token2, NULL, 0);
+							simple_strtol(token2, NULL, 0);
 						batch_params.nchan++;
-						DHD_PNO(("channel :%d\n",
-						batch_params.chan_list[i-1]));
+						DHD_PNO(("channel: %d\n",
+							batch_params.chan_list[i-1]));
 					}
 				 }
 			} else if (!strncmp(param, PNO_PARAM_RTT, strlen(PNO_PARAM_MSCAN))) {
@@ -1075,6 +1083,10 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		ret = -EINVAL;
 		goto exit;
 	}
+	if (!capable(CAP_NET_ADMIN)) {
+		ret = -EPERM;
+		goto exit;
+	}
 	if (copy_from_user(&priv_cmd, ifr->ifr_data, sizeof(android_wifi_priv_cmd))) {
 		ret = -EFAULT;
 		goto exit;
@@ -1455,6 +1467,18 @@ void *wifi_get_country_code(char *ccode)
 	return NULL;
 }
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 39)) */
+
+bool wifi_process_partial_resume(int action)
+{
+#ifdef CONFIG_PARTIALRESUME
+	if (wifi_control_data && wifi_control_data->partial_resume) {
+		return wifi_control_data->partial_resume(action);
+	}
+	return false;
+#else
+	return false;
+#endif
+}
 
 static int wifi_set_carddetect(int on)
 {

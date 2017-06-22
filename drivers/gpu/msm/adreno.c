@@ -1941,6 +1941,7 @@ error_clk_off:
 	return status;
 }
 
+<<<<<<< HEAD
 static int _status;
 
 /**
@@ -1993,6 +1994,8 @@ static int adreno_start(struct kgsl_device *device, int priority)
 	return _status;
 }
 
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 /**
  * adreno_vbif_clear_pending_transactions() - Clear transactions in VBIF pipe
  * @device: Pointer to the device whose VBIF pipe is to be cleared
@@ -2018,6 +2021,10 @@ static void adreno_vbif_clear_pending_transactions(struct kgsl_device *device)
 	adreno_writereg(adreno_dev, ADRENO_REG_VBIF_XIN_HALT_CTRL0, 0);
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 static int adreno_stop(struct kgsl_device *device)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);

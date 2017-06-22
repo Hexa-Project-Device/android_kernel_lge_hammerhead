@@ -35,6 +35,7 @@ struct acdb_cal_block {
 	uint32_t		cal_paddr;
 };
 
+<<<<<<< HEAD
 struct acdb_atomic_cal_block {
 	atomic_t		cal_size;
 	atomic_t		cal_kvaddr;
@@ -46,6 +47,8 @@ struct hw_delay_entry {
 	uint32_t delay_usec;
 };
 
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 uint32_t get_voice_rx_topology(void);
 uint32_t get_voice_tx_topology(void);
 uint32_t get_adm_rx_topology(void);

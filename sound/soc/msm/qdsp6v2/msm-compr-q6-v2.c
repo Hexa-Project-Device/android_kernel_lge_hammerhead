@@ -52,9 +52,12 @@
 #define COMPRESSED_LR_VOL_MAX_STEPS	0x20002000
 
 #define MAX_AC3_PARAM_SIZE		(18*2*sizeof(int))
+<<<<<<< HEAD
 #define AMR_WB_BAND_MODE 8
 #define AMR_WB_DTX_MODE 0
 
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 
 const DECLARE_TLV_DB_LINEAR(compr_rx_vol_gain, 0,
 			    COMPRESSED_LR_VOL_MAX_STEPS);
@@ -1018,7 +1021,11 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 			struct snd_dec_ddp *ddp =
 				&compr->info.codec_param.codec.options.ddp;
 			uint32_t params_length = ddp->params_length*sizeof(int);
+<<<<<<< HEAD
 			if(params_length > MAX_AC3_PARAM_SIZE) {
+=======
+			if (params_length > MAX_AC3_PARAM_SIZE) {
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 				/*MAX is 36*sizeof(int) this should not happen*/
 				pr_err("params_length(%d) is greater than %d",
 				params_length, MAX_AC3_PARAM_SIZE);
@@ -1055,7 +1062,11 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 			struct snd_dec_ddp *ddp =
 				&compr->info.codec_param.codec.options.ddp;
 			uint32_t params_length = ddp->params_length*sizeof(int);
+<<<<<<< HEAD
 			if(params_length > MAX_AC3_PARAM_SIZE) {
+=======
+			if (params_length > MAX_AC3_PARAM_SIZE) {
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 				/*MAX is 36*sizeof(int) this should not happen*/
 				pr_err("params_length(%d) is greater than %d",
 				params_length, MAX_AC3_PARAM_SIZE);

@@ -580,12 +580,24 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 			size_t size)
 {
 	int order, ret = 0;
+<<<<<<< HEAD
 	int len, sglen_alloc, sglen = 0;
+=======
+	int sglen_alloc, sglen = 0;
+	size_t len;
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 	void *ptr;
 	unsigned int align;
 
+	size = PAGE_ALIGN(size);
+	if (size == 0 || size > UINT_MAX)
+		return -EINVAL;
+
+<<<<<<< HEAD
+=======
 	align = (memdesc->flags & KGSL_MEMALIGN_MASK) >> KGSL_MEMALIGN_SHIFT;
 
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 	/*
 	 * There needs to be enough room in the sg structure to be able to
 	 * service the allocation entirely with PAGE_SIZE sized chunks

@@ -295,6 +295,8 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
 	if (err)
 		goto out;
 
+	tsk->flags &= ~PF_SU;
+
 	tsk->stack = ti;
 #ifdef CONFIG_SECCOMP
 	/*
@@ -1277,6 +1279,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 
 	p->utime = p->stime = p->gtime = 0;
 	p->utimescaled = p->stimescaled = 0;
+	p->cpu_power = 0;
 #ifndef CONFIG_VIRT_CPU_ACCOUNTING
 	p->prev_utime = p->prev_stime = 0;
 #endif

@@ -20,8 +20,11 @@
 #include <linux/leds.h>
 #include <linux/pwm.h>
 #include <linux/err.h>
+<<<<<<< HEAD
 
 #include <asm/system_info.h>
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 
 #include "mdss_dsi.h"
 
@@ -298,7 +301,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
 
-	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+	pr_debug("%s: ctrl=%pK ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	mutex_lock(&panel_cmd_mutex);
 	if (local_ctrl->on_cmds.cmd_cnt)
@@ -324,7 +327,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+	pr_debug("%s: ctrl=%pK ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	mipi  = &pdata->panel_info.mipi;
 
@@ -772,6 +775,7 @@ error:
 	return -EINVAL;
 }
 
+<<<<<<< HEAD
 static int read_local_on_cmds(char *buf, size_t cmd)
 {
 	int i, len = 0;
@@ -969,6 +973,8 @@ static struct attribute_group dsi_panel_attribute_group = {
 
 /**************************** sysfs end **************************/
 
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 static int __devinit mdss_dsi_panel_probe(struct platform_device *pdev)
 {
 	int rc = 0;

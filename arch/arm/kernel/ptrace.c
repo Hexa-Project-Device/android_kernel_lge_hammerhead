@@ -844,7 +844,7 @@ long arch_ptrace(struct task_struct *child, long request,
 #endif
 
 		case PTRACE_GET_THREAD_AREA:
-			ret = put_user(task_thread_info(child)->tp_value,
+			ret = put_user(task_thread_info(child)->tp_value[0],
 				       datap);
 			break;
 
@@ -925,6 +925,7 @@ asmlinkage int syscall_trace(int why, struct pt_regs *regs, int scno)
 	if (!(current->ptrace & PT_PTRACED))
 		return scno;
 
+<<<<<<< HEAD
 	/*
 	 * IP is used to denote syscall entry/exit:
 	 * IP = 0 -> entry, =1 -> exit
@@ -932,6 +933,8 @@ asmlinkage int syscall_trace(int why, struct pt_regs *regs, int scno)
 	ip = regs->ARM_ip;
 	regs->ARM_ip = why;
 
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 	/*
 	 * IP is used to denote syscall entry/exit:
 	 * IP = 0 -> entry, =1 -> exit

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -424,7 +424,7 @@ static void *msm_ipc_router_skb_to_buf(struct sk_buff_head *skb_head,
 				       unsigned int len)
 {
 	struct sk_buff *temp;
-	int offset = 0, buf_len = 0, copy_len;
+	unsigned int offset = 0, buf_len = 0, copy_len;
 	void *buf;
 
 	if (!skb_head) {
@@ -2492,7 +2492,7 @@ int msm_ipc_router_get_curr_pkt_size(struct msm_ipc_port *port_ptr)
 
 int msm_ipc_router_bind_control_port(struct msm_ipc_port *port_ptr)
 {
-	if (!port_ptr)
+	if (unlikely(!port_ptr || port_ptr->type != CLIENT_PORT))
 		return -EINVAL;
 
 	down_write(&local_ports_lock_lha2);

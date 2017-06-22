@@ -723,6 +723,9 @@ static int qseecom_set_client_mem_param(struct qseecom_dev_handle *data,
 	/* Copy the relevant information needed for loading the image */
 	if (copy_from_user(&req, (void __user *)argp, sizeof(req)))
 		return -EFAULT;
+	if (!access_ok(VERIFY_WRITE, (void __user *)req.virt_sb_base,
+			req.sb_len))
+		return -EFAULT;
 
 	if ((req.ifd_data_fd <= 0) || (req.virt_sb_base == 0) ||
 					(req.sb_len == 0)) {
@@ -730,10 +733,13 @@ static int qseecom_set_client_mem_param(struct qseecom_dev_handle *data,
 			req.ifd_data_fd, req.sb_len, req.virt_sb_base);
 		return -EFAULT;
 	}
+<<<<<<< HEAD
 	if (!access_ok(VERIFY_WRITE, (void __user *)req.virt_sb_base,
 			req.sb_len))
 		return -EFAULT;
 
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 	/* Get the handle of the shared fd */
 	data->client.ihandle = ion_import_dma_buf(qseecom.ion_clnt,
 						req.ifd_data_fd);
@@ -1236,11 +1242,12 @@ int __qseecom_process_rpmb_svc_cmd(struct qseecom_dev_handle *data_ptr,
 	void *req_buf = NULL;
 
 	if ((req_ptr == NULL) || (send_svc_ireq_ptr == NULL)) {
-		pr_err("Error with pointer: req_ptr = %p, send_svc_ptr = %p\n",
+		pr_err("Error with pointer: req_ptr = %pK, send_svc_ptr = %pK\n",
 			req_ptr, send_svc_ireq_ptr);
 		return -EINVAL;
 	}
 
+<<<<<<< HEAD
 	if ((!req_ptr->cmd_req_buf) || (!req_ptr->resp_buf)) {
 		pr_err("Invalid req/resp buffer, exiting\n");
 		return -EINVAL;
@@ -1252,6 +1259,17 @@ int __qseecom_process_rpmb_svc_cmd(struct qseecom_dev_handle *data_ptr,
 		pr_err("cmd buf not pointing to base offset of shared buffer\n");
 		return -EINVAL;
 	}
+=======
+	if (((uint32_t)req_ptr->cmd_req_buf <
+			data_ptr->client.user_virt_sb_base)
+			|| ((uint32_t)req_ptr->cmd_req_buf >=
+			(data_ptr->client.user_virt_sb_base +
+			data_ptr->client.sb_length))) {
+		pr_err("cmd buffer address not within shared bufffer\n");
+		return -EINVAL;
+	}
+
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 
 	if (((uint32_t)req_ptr->resp_buf < data_ptr->client.user_virt_sb_base)
 			|| ((uint32_t)req_ptr->resp_buf >=
@@ -1409,6 +1427,7 @@ static int __validate_send_cmd_inputs(struct qseecom_dev_handle *data,
 		pr_err("cmd buffer address not within shared bufffer\n");
 		return -EINVAL;
 	}
+<<<<<<< HEAD
 	if (((uintptr_t)req->resp_buf <
 				data->client.user_virt_sb_base)  ||
 		((uintptr_t)req->resp_buf >=
@@ -1420,6 +1439,22 @@ static int __validate_send_cmd_inputs(struct qseecom_dev_handle *data,
 		(req->cmd_req_len > data->client.sb_length) ||
 		(req->resp_len > data->client.sb_length)) {
 		pr_err("cmd buf length or response buf length not valid\n");
+=======
+
+
+	if (((uint32_t)req->resp_buf < data->client.user_virt_sb_base)  ||
+		((uint32_t)req->resp_buf >= (data->client.user_virt_sb_base +
+					data->client.sb_length))){
+		pr_err("response buffer address not within shared bufffer\n");
+		return -EINVAL;
+	}
+
+	if ((req->cmd_req_len == 0) || (req->resp_len == 0) ||
+		req->cmd_req_len > data->client.sb_length ||
+		req->resp_len > data->client.sb_length) {
+		pr_err("cmd buffer length or "
+				"response buffer length not valid\n");
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 		return -EINVAL;
 	}
 	if (req->cmd_req_len > UINT_MAX - req->resp_len) {
@@ -1554,6 +1589,11 @@ static int qseecom_send_cmd(struct qseecom_dev_handle *data, void __user *argp)
 	if (ret)
 		return ret;
 
+<<<<<<< HEAD
+=======
+	pr_debug("sending cmd_req->rsp size: %u, ptr: 0x%pK\n",
+			req.resp_len, req.resp_buf);
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 	return ret;
 }
 
@@ -1741,20 +1781,52 @@ static int qseecom_send_modfd_cmd(struct qseecom_dev_handle *data,
 		pr_err("copy_from_user failed\n");
 		return ret;
 	}
+<<<<<<< HEAD
+=======
+	if (req.cmd_req_buf == NULL || req.resp_buf == NULL) {
+		pr_err("cmd buffer or response buffer is null\n");
+		return -EINVAL;
+	}
+	if (((uint32_t)req.cmd_req_buf < data->client.user_virt_sb_base) ||
+		((uint32_t)req.cmd_req_buf >= (data->client.user_virt_sb_base +
+					data->client.sb_length))) {
+		pr_err("cmd buffer address not within shared bufffer\n");
+		return -EINVAL;
+	}
+
+	if (((uint32_t)req.resp_buf < data->client.user_virt_sb_base)  ||
+		((uint32_t)req.resp_buf >= (data->client.user_virt_sb_base +
+					data->client.sb_length))){
+		pr_err("response buffer address not within shared bufffer\n");
+		return -EINVAL;
+	}
+	if (req.cmd_req_len == 0 || req.cmd_req_len > data->client.sb_length ||
+			req.resp_len > data->client.sb_length) {
+		pr_err("cmd or response buffer length not valid\n");
+		return -EINVAL;
+	}
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 
 	send_cmd_req.cmd_req_buf = req.cmd_req_buf;
 	send_cmd_req.cmd_req_len = req.cmd_req_len;
 	send_cmd_req.resp_buf = req.resp_buf;
 	send_cmd_req.resp_len = req.resp_len;
 
+<<<<<<< HEAD
 	if (__validate_send_cmd_inputs(data, &send_cmd_req))
 		return -EINVAL;
 
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 	/* validate offsets */
 	for (i = 0; i < MAX_ION_FD; i++) {
 		if (req.ifd_data[i].cmd_buf_offset >= req.cmd_req_len) {
 			pr_err("Invalid offset %d = 0x%x\n",
+<<<<<<< HEAD
 				i, req.ifd_data[i].cmd_buf_offset);
+=======
+						 i, req.ifd_data[i].cmd_buf_offset);
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 			return -EINVAL;
 		}
 	}
@@ -1763,7 +1835,11 @@ static int qseecom_send_modfd_cmd(struct qseecom_dev_handle *data,
 	req.resp_buf = (void *)__qseecom_uvirt_to_kvirt(data,
 						(uint32_t)req.resp_buf);
 
+<<<<<<< HEAD
 	ret = __qseecom_update_cmd_buf(&req, false, data, false);
+=======
+	ret = __qseecom_update_cmd_buf(&req, false);
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 	if (ret)
 		return ret;
 	ret = __qseecom_send_cmd(data, &send_cmd_req);
@@ -1772,7 +1848,12 @@ static int qseecom_send_modfd_cmd(struct qseecom_dev_handle *data,
 	ret = __qseecom_update_cmd_buf(&req, true, data, false);
 	if (ret)
 		return ret;
+<<<<<<< HEAD
 
+=======
+	pr_debug("sending cmd_req->rsp size: %u, ptr: 0x%pK\n",
+			req.resp_len, req.resp_buf);
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 	return ret;
 }
 
@@ -2461,7 +2542,7 @@ int qseecom_send_command(struct qseecom_handle *handle, void *send_buf,
 	if (ret)
 		return ret;
 
-	pr_debug("sending cmd_req->rsp size: %u, ptr: 0x%p\n",
+	pr_debug("sending cmd_req->rsp size: %u, ptr: 0x%pK\n",
 			req.resp_len, req.resp_buf);
 	return ret;
 }
@@ -3600,7 +3681,10 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_SEND_CMD_REQ: {
+<<<<<<< HEAD
 		pr_debug("qseecom.current_mode %d\n", qseecom.current_mode);
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 		if ((data->client.app_id == 0) ||
 			(data->type != QSEECOM_CLIENT_APP)) {
 			pr_err("send cmd req: invalid handle (%d) app_id(%d)\n",
@@ -3661,7 +3745,10 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_SEND_MODFD_CMD_REQ: {
+<<<<<<< HEAD
 		pr_debug("qseecom.current_mode %d\n", qseecom.current_mode);
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 		if ((data->client.app_id == 0) ||
 			(data->type != QSEECOM_CLIENT_APP)) {
 			pr_err("send mdfd cmd: invalid handle (%d) appid(%d)\n",
@@ -3754,6 +3841,7 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 	}
 	case QSEECOM_IOCTL_SET_MEM_PARAM_REQ: {
 		if ((data->type != QSEECOM_CLIENT_APP) &&
+<<<<<<< HEAD
 			(data->type != QSEECOM_GENERIC) &&
 			(data->type != QSEECOM_SECURE_SERVICE)) {
 			pr_err("set mem param req: invalid handle (%d)\n",
@@ -3762,6 +3850,15 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 			break;
 		}
 		pr_debug("SET_MEM_PARAM: qseecom addr = 0x%x\n", (u32)data);
+=======
+				(data->type != QSEECOM_GENERIC) &&
+				(data->type != QSEECOM_SECURE_SERVICE)) {
+			pr_err("set mem param req: invalid handle (%d)\n",
+				data->type);
+			ret = -EINVAL;
+			break;
+		}
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 		ret = qseecom_set_client_mem_param(data, argp);
 		if (ret)
 			pr_err("failed Qqseecom_set_mem_param request: %d\n",
@@ -3770,14 +3867,23 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 	}
 	case QSEECOM_IOCTL_LOAD_APP_REQ: {
 		if ((data->type != QSEECOM_GENERIC) &&
+<<<<<<< HEAD
 			(data->type != QSEECOM_CLIENT_APP)) {
 			pr_err("load app req: invalid handle (%d)\n",
 								data->type);
+=======
+				(data->type != QSEECOM_CLIENT_APP)) {
+			pr_err("load app req: invalid handle (%d)\n",
+				data->type);
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 			ret = -EINVAL;
 			break;
 		}
 		data->type = QSEECOM_CLIENT_APP;
+<<<<<<< HEAD
 		pr_debug("LOAD_APP_REQ: qseecom_addr = 0x%x\n", (u32)data);
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
 		if (qseecom.qsee_version > QSEEE_VERSION_00) {
@@ -3797,6 +3903,7 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 	}
 	case QSEECOM_IOCTL_UNLOAD_APP_REQ: {
 		if ((data->client.app_id == 0) ||
+<<<<<<< HEAD
 			(data->type != QSEECOM_CLIENT_APP)) {
 			pr_err("unload app req:invalid handle(%d) app_id(%d)\n",
 					data->type, data->client.app_id);
@@ -3804,6 +3911,14 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 			break;
 		}
 		pr_debug("UNLOAD_APP: qseecom_addr = 0x%x\n", (u32)data);
+=======
+				(data->type != QSEECOM_CLIENT_APP)) {
+			pr_err("unload app req:invalid handle(%d) app_id(%d)\n",
+				data->type, data->client.app_id);
+			ret = -EINVAL;
+			break;
+		}
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
 		ret = qseecom_unload_app(data, false);
@@ -3851,16 +3966,28 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 	}
 	case QSEECOM_IOCTL_PERF_DISABLE_REQ:{
 		if ((data->type != QSEECOM_SECURE_SERVICE) &&
+<<<<<<< HEAD
 			(data->type != QSEECOM_CLIENT_APP)) {
 			pr_err("perf disable req: invalid handle (%d)\n",
 								data->type);
+=======
+				(data->type != QSEECOM_CLIENT_APP)) {
+			pr_err("perf disable req: invalid handle (%d)\n",
+				data->type);
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 			ret = -EINVAL;
 			break;
 		}
 		if ((data->type == QSEECOM_CLIENT_APP) &&
+<<<<<<< HEAD
 			(data->client.app_id == 0)) {
 			pr_err("perf disable: invalid handle (%d)app_id(%d)\n",
 					data->type, data->client.app_id);
+=======
+				(data->client.app_id == 0)) {
+			pr_err("perf disable: invalid handle (%d)app_id(%d)\n",
+				data->type, data->client.app_id);
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 			ret = -EINVAL;
 			break;
 		}
@@ -3891,9 +4018,15 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_LOAD_EXTERNAL_ELF_REQ: {
+<<<<<<< HEAD
 		if (data->type != QSEECOM_GENERIC) {
 			pr_err("load ext elf req: invalid client handle (%d)\n",
 								data->type);
+=======
+		if (data->type != QSEECOM_UNAVAILABLE_CLIENT_APP) {
+			pr_err("unload ext elf req: invalid handle (%d)\n",
+				data->type);
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 			ret = -EINVAL;
 			break;
 		}
@@ -3927,7 +4060,10 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 	}
 	case QSEECOM_IOCTL_APP_LOADED_QUERY_REQ: {
 		data->type = QSEECOM_CLIENT_APP;
+<<<<<<< HEAD
 		pr_debug("APP_LOAD_QUERY: qseecom_addr = 0x%x\n", (u32)data);
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
 		pr_debug("APP_LOAD_QUERY: qseecom_addr = 0x%x\n", (u32)data);
@@ -3949,6 +4085,13 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 				qseecom.qsee_version);
 			return -EINVAL;
 		}
+		data->type = QSEECOM_SECURE_SERVICE;
+		if (data->type != QSEECOM_GENERIC) {
+			pr_err("send cmd svc req: invalid handle (%d)\n",
+				data->type);
+			ret = -EINVAL;
+			break;
+		}
 		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
 		ret = qseecom_send_service_cmd(data, argp);
@@ -3957,8 +4100,11 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_CREATE_KEY_REQ: {
+<<<<<<< HEAD
 		if (!(qseecom.support_pfe || qseecom.support_fde))
 			pr_err("Features requiring key init not supported\n");
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 		if (data->type != QSEECOM_GENERIC) {
 			pr_err("create key req: invalid handle (%d)\n",
 								data->type);
@@ -3980,8 +4126,11 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_WIPE_KEY_REQ: {
+<<<<<<< HEAD
 		if (!(qseecom.support_pfe || qseecom.support_fde))
 			pr_err("Features requiring key init not supported\n");
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 		if (data->type != QSEECOM_GENERIC) {
 			pr_err("wipe key req: invalid handle (%d)\n",
 								data->type);
@@ -4119,6 +4268,8 @@ static int qseecom_release(struct inode *inode, struct file *file)
 			ret = qseecom_unmap_ion_allocated_memory(data);
 			if (ret)
 				pr_err("Ion Unmap failed\n");
+			break;
+		case QSEECOM_UNAVAILABLE_CLIENT_APP:
 			break;
 		case QSEECOM_UNAVAILABLE_CLIENT_APP:
 			break;

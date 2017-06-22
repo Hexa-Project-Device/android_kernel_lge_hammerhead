@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -84,7 +84,11 @@ struct msm_compr_gapless_state {
 };
 
 static unsigned int supported_sample_rates[] = {
+<<<<<<< HEAD
 	8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 96000, 192000
+=======
+	8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 };
 
 struct msm_compr_pdata {
@@ -807,12 +811,15 @@ static int msm_compr_set_params(struct snd_compr_stream *cstream,
 		return -EINVAL;
 
 	switch (params->codec.id) {
+<<<<<<< HEAD
 	case SND_AUDIOCODEC_PCM: {
 		pr_debug("SND_AUDIOCODEC_PCM\n");
 		prtd->codec = FORMAT_LINEAR_PCM;
 		break;
 	}
 
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 	case SND_AUDIOCODEC_MP3: {
 		pr_debug("SND_AUDIOCODEC_MP3\n");
 		prtd->codec = FORMAT_MP3;
@@ -1743,7 +1750,7 @@ static int msm_compr_audio_effects_config_info(struct snd_kcontrol *kcontrol,
 					       struct snd_ctl_elem_info *uinfo)
 {
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-	uinfo->count = 128;
+	uinfo->count = MAX_PP_PARAMS_SZ;
 	uinfo->value.integer.min = 0;
 	uinfo->value.integer.max = 0xFFFFFFFF;
 	return 0;

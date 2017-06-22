@@ -101,6 +101,7 @@ struct rtac_adm {
 };
 static struct rtac_adm		rtac_adm_data;
 static u32			*rtac_adm_buffer;
+<<<<<<< HEAD
 
 
 /* ADM V2 data */
@@ -123,6 +124,8 @@ struct rtac_adm_v2 {
 };
 
 static struct rtac_adm_v2	rtac_adm_data_v2;
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 
 
 /* ASM APR */
@@ -376,6 +379,7 @@ static int rtac_release(struct inode *inode, struct file *f)
 	}
 done:
 	return result;
+<<<<<<< HEAD
 }
 
 
@@ -517,6 +521,8 @@ static void rtac_remove_popp_from_adm_devices_v2(u32 popp_id)
 			}
 		}
 	}
+=======
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 }
 
 /* ADM Info */
@@ -974,6 +980,7 @@ u32 send_adm_apr(void *buf, u32 opcode)
 			opcode);
 		goto done;
 	}
+<<<<<<< HEAD
 
 	if (opcode == ADM_CMD_GET_PP_PARAMS_V5) {
 		bytes_returned = ((u32 *)rtac_cal[ADM_RTAC_CAL].cal_data.
@@ -985,6 +992,19 @@ u32 send_adm_apr(void *buf, u32 opcode)
 			goto done;
 		}
 
+=======
+
+	if (opcode == ADM_CMD_GET_PP_PARAMS_V5) {
+		bytes_returned = ((u32 *)rtac_cal[ADM_RTAC_CAL].cal_data.
+			kvaddr)[2] + 3 * sizeof(u32);
+
+		if (bytes_returned > user_buf_size) {
+			pr_err("%s: User buf not big enough, size = 0x%x, returned size = 0x%x\n",
+				__func__, user_buf_size, bytes_returned);
+			goto done;
+		}
+
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 		if (copy_to_user(buf, (void *)
 				rtac_cal[ADM_RTAC_CAL].cal_data.kvaddr,
 				bytes_returned)) {
@@ -1183,6 +1203,7 @@ u32 send_rtac_asm_apr(void *buf, u32 opcode)
 			opcode);
 		goto done;
 	}
+<<<<<<< HEAD
 
 	if (opcode == ASM_STREAM_CMD_GET_PP_PARAMS_V2) {
 		bytes_returned = ((u32 *)rtac_cal[ASM_RTAC_CAL].cal_data.
@@ -1194,6 +1215,19 @@ u32 send_rtac_asm_apr(void *buf, u32 opcode)
 			goto done;
 		}
 
+=======
+
+	if (opcode == ASM_STREAM_CMD_GET_PP_PARAMS_V2) {
+		bytes_returned = ((u32 *)rtac_cal[ASM_RTAC_CAL].cal_data.
+			kvaddr)[2] + 3 * sizeof(u32);
+
+		if (bytes_returned > user_buf_size) {
+			pr_err("%s: User buf not big enough, size = 0x%x, returned size = 0x%x\n",
+				__func__, user_buf_size, bytes_returned);
+			goto done;
+		}
+
+>>>>>>> 1dae34efb7d2399073ca371c953aafd2ed503849
 		if (copy_to_user(buf, (void *)
 				rtac_cal[ASM_RTAC_CAL].cal_data.kvaddr,
 				bytes_returned)) {
